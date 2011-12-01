@@ -17,7 +17,9 @@ Definition constructor := (inductive * nat)%type.
 
 (* kernel/univ.ml *)
 (* we keep a table of universes that have given to the user *)
-Inductive universe := univ : nat -> universe.
+Module Type t. Variable t: Type. End t.
+Module Univ : t. Definition t := nat. End Univ.
+Definition universe := Univ.t.
 (* kernel/constr *)
 Definition metavariable := nat.
 Definition existential_key := nat.
@@ -53,17 +55,4 @@ Inductive constr :=
   | Fix : list nat -> nat -> prec_declaration constr -> constr
   | CoFix : nat -> prec_declaration constr -> constr.
 
-(*Extraction "term.ml" constr.*)
-
 Declare ML Module "reflect".
-Declare ML Module "rippling_plugin".
-Open Scope string_scope.
-Require Import Program.
-
-Goal True.
-  set True.
-  Require Rippling.
-  ocaml_term True
-.
-constr plus.
-Show.
