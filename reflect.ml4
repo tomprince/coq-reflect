@@ -123,11 +123,19 @@ let to_coq_constant c =
     ; GRef (dl, Constants.kernel_name()), to_coq_kn (Names.canonical_con c)
     ]
 
-let to_coq_constr c =
+let rec to_coq_constr_list xs =
+  to_coq_list (GRef (dl,Constants.constr())) (List.map to_coq_constr xs)
+and to_coq_constr c =
   match kind_of_term c with
+    | Rel ind -> GApp (dl, GRef (dl, Constants.constr_Rel()), [ Z_syntax.z_of_int dl (Bigint.big_of_int ind )])
     | Var id -> GApp (dl, GRef (dl, Constants.constr_Var()), [ to_coq_identifier id ])
+    | Evar (key, xs) -> GApp (dl, GRef (dl, Constants.constr_Evar()), [
+      Nat_syntax.nat_of_int dl (Bigint.big_of_int key); to_coq_constr_list
+      (Array.to_list xs) ])
+    | Meta key -> GApp (dl, GRef (dl, Constants.constr_Meta()), [ Nat_syntax.nat_of_int dl (Bigint.big_of_int key) ])
+
     | Const c -> GApp (dl, GRef (dl, Constants.constr_Const()), [ to_coq_constant c ])
-    | t -> GRef (dl, Constants.constr_Rel())
+    | t -> GRef (dl, Constants.constr_CoFix())
 
 let glob_to_constr c =
   let (sigma, env) = Lemmas.get_current_context () in
@@ -136,5 +144,6 @@ let glob_to_constr c =
 let to_coq_constr c = glob_to_constr (to_coq_constr c)
 
 TACTIC EXTEND constr
-[ "constr" constr(c) ] -> [ fun gl -> Tactics.letin_tac None Names.Anonymous (to_coq_constr c) None Tacticals.onConcl gl ]
+  | [ "constr" constr(c) ] -> [ fun gl -> Tactics.letin_tac None Names.Anonymous (to_coq_constr c) None Tacticals.onConcl gl ]
+  | [ "goal_constr" ] -> [ fun gl -> Tactics.letin_tac None Names.Anonymous (to_coq_constr (Tacmach.pf_concl gl)) None Tacticals.onConcl gl ]
 END
